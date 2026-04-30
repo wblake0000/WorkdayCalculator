@@ -40,6 +40,7 @@
     }
 
     .card {
+      position: relative;
       width: 100%;
       max-width: 520px;
       background: var(--panel);
@@ -60,7 +61,7 @@
 
     label { font-weight: 600; }
 
-    input, select, button {
+    input, button {
       width: 100%;
       padding: 0.6rem;
       border-radius: 8px;
@@ -79,6 +80,24 @@
     }
 
     button:hover { filter: brightness(1.05); }
+
+    .theme-icon-btn {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      width: 2.1rem;
+      height: 2.1rem;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--input-bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+    }
 
     .result {
       margin-top: 1rem;
@@ -101,6 +120,7 @@
 </head>
 <body>
   <main class="card">
+    <button id="themeToggle" class="theme-icon-btn" type="button" aria-label="Switch to dark theme" aria-pressed="false">🌙</button>
     <h1>Tuesday–Saturday Workday Calculator</h1>
     <p>Workweek is <strong>Tuesday through Saturday</strong>. Dates are rounded to the nearest Tuesday.</p>
 
@@ -119,16 +139,10 @@
       <input id="endDate" type="date" />
     </div>
 
-    <div class="row">
-      <label for="themeToggle">Theme</label>
-      <button id="themeToggle" type="button" aria-pressed="false">Switch to Dark Theme</button>
-    </div>
-
-    <button id="calculateBtn" type="button">Calculate Missing Field</button>
     <button id="clearBtn" type="button">Clear</button>
 
     <div id="result" class="result" aria-live="polite">
-      Fill any two fields and click <strong>Calculate Missing Field</strong>.
+      Fill any two fields and the third field will be calculated automatically.
     </div>
   </main>
 
@@ -136,7 +150,6 @@
     const startDateInput = document.getElementById('startDate');
     const durationInput = document.getElementById('duration');
     const endDateInput = document.getElementById('endDate');
-    const calculateBtn = document.getElementById('calculateBtn');
     const clearBtn = document.getElementById('clearBtn');
     const result = document.getElementById('result');
     const themeToggle = document.getElementById('themeToggle');
@@ -144,7 +157,9 @@
     function setTheme(isDark) {
       document.body.classList.toggle('dark', isDark);
       themeToggle.setAttribute('aria-pressed', String(isDark));
-      themeToggle.textContent = isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme';
+      themeToggle.textContent = isDark ? '☀️' : '🌙';
+      themeToggle.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+      themeToggle.title = isDark ? 'Switch to light theme' : 'Switch to dark theme';
     }
 
     themeToggle.addEventListener('click', () => {
@@ -221,7 +236,7 @@
       calculatedField.classList.add('field-calculated');
     }
 
-    calculateBtn.addEventListener('click', () => {
+    function calculateMissingField() {
       const startRaw = startDateInput.value;
       const durationRaw = durationInput.value;
       const endRaw = endDateInput.value;
@@ -231,11 +246,12 @@
       const hasEnd = !!endRaw;
       const filledCount = [hasStart, hasDuration, hasEnd].filter(Boolean).length;
 
-      if (filledCount !== 2) {
-        result.innerHTML = 'Please fill exactly two fields (Start Date, Duration, End Date).';
+      if (filledCount < 2) {
+        result.innerHTML = 'Fill any two fields and the third field will be calculated automatically.';
         clearFieldColors();
         return;
       }
+      if (filledCount > 2) return;
 
       if (hasStart && hasEnd) {
         const roundedStart = roundToNearestTuesday(parseDateInput(startRaw));
@@ -287,6 +303,11 @@
           <span class="small">Rounded end used: ${formatDate(roundedEnd)}</span><br>
           <span class="small">Calculated start: ${formatDate(cursor)}</span>`;
       }
+    }
+
+    [startDateInput, durationInput, endDateInput].forEach((el) => {
+      el.addEventListener('input', calculateMissingField);
+      el.addEventListener('change', calculateMissingField);
     });
 
     clearBtn.addEventListener('click', () => {
@@ -294,7 +315,7 @@
       durationInput.value = '';
       endDateInput.value = '';
       clearFieldColors();
-      result.innerHTML = 'Pick any two fields and click <strong>Calculate Missing Field</strong>.';
+      result.innerHTML = 'Fill any two fields and the third field will be calculated automatically.';
     });
 
     // default theme is always light
