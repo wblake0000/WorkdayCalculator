@@ -336,12 +336,6 @@
         return;
       }
 
-      if ((editedFieldId === 'startDate' || editedFieldId === 'endDate')
-          && document.activeElement
-          && document.activeElement.id === editedFieldId) {
-        return;
-      }
-
       if ((startRaw && !isUsableDateString(startRaw)) || (endRaw && !isUsableDateString(endRaw))) {
         return;
       }
@@ -439,8 +433,14 @@
       }, delayMs);
     }
 
-    startDateInput.addEventListener('input', () => recordUserEdit('startDate'));
-    endDateInput.addEventListener('input', () => recordUserEdit('endDate'));
+    startDateInput.addEventListener('input', () => {
+      recordUserEdit('startDate');
+      scheduleCalculation('startDate', 1000);
+    });
+    endDateInput.addEventListener('input', () => {
+      recordUserEdit('endDate');
+      scheduleCalculation('endDate', 1000);
+    });
     startDateInput.addEventListener('change', () => recordUserEdit('startDate'));
     endDateInput.addEventListener('change', () => recordUserEdit('endDate'));
     startDateInput.addEventListener('blur', () => scheduleCalculation('startDate', 0));
