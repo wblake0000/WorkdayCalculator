@@ -154,6 +154,7 @@
     const result = document.getElementById('result');
     const themeToggle = document.getElementById('themeToggle');
     let calculateTimer = null;
+    let lastCalculatedFieldId = null;
 
     function setTheme(isDark) {
       document.body.classList.toggle('dark', isDark);
@@ -254,7 +255,7 @@
       calculatedField.classList.add('field-calculated');
     }
 
-    function calculateMissingField() {
+    function calculateMissingField(editedFieldId = null) {
       const startRaw = startDateInput.value;
       const durationRaw = durationInput.value;
       const endRaw = endDateInput.value;
@@ -267,9 +268,21 @@
       if (filledCount < 2) {
         result.innerHTML = 'Fill any two fields and the third field will be calculated automatically.';
         clearFieldColors();
+        lastCalculatedFieldId = null;
         return;
       }
-      if (filledCount > 2) return;
+      if (filledCount > 2) {
+        if (lastCalculatedFieldId && editedFieldId && editedFieldId !== lastCalculatedFieldId) {
+          const fieldMap = {
+            startDate: startDateInput,
+            duration: durationInput,
+            endDate: endDateInput
+          };
+          fieldMap[lastCalculatedFieldId].value = '';
+          return calculateMissingField(editedFieldId);
+        }
+        return;
+      }
 
       if (hasStart && hasEnd) {
         const roundedStart = roundToNearestTuesday(parseDateInput(startRaw));
@@ -280,6 +293,7 @@
         const end = roundedStart <= roundedEnd ? roundedEnd : roundedStart;
         const workdays = countWorkdaysInclusive(start, end);
         durationInput.value = String(workdays);
+        lastCalculatedFieldId = 'duration';
         markFields([startDateInput, endDateInput], durationInput);
         result.innerHTML = `<strong>Duration calculated: ${workdays} workdays</strong><br>
           <span class="small">Rounded range used: ${formatDate(start)} → ${formatDate(end)} (inclusive)</span>`;
@@ -297,6 +311,7 @@
         startDateInput.value = toInputDateValue(roundedStart);
         const calculatedEnd = addWorkdaysFromStart(roundedStart, duration);
         endDateInput.value = toInputDateValue(calculatedEnd);
+        lastCalculatedFieldId = 'endDate';
         markFields([startDateInput, durationInput], endDateInput);
         result.innerHTML = `<strong>End Date calculated.</strong><br>
           <span class="small">Rounded start used: ${formatDate(roundedStart)}</span><br>
@@ -320,6 +335,7 @@
           if (isWorkday(cursor)) remaining--;
         }
         startDateInput.value = toInputDateValue(cursor);
+        lastCalculatedFieldId = 'startDate';
         markFields([endDateInput, durationInput], startDateInput);
         result.innerHTML = `<strong>Start Date calculated.</strong><br>
           <span class="small">Rounded end used: ${formatDate(roundedEnd)}</span><br>
@@ -327,19 +343,19 @@
       }
     }
 
-    function scheduleCalculation(delayMs = 550) {
+    function scheduleCalculation(editedFieldId, delayMs = 550) {
       if (calculateTimer) clearTimeout(calculateTimer);
       calculateTimer = setTimeout(() => {
-        calculateMissingField();
+        calculateMissingField(editedFieldId);
         calculateTimer = null;
       }, delayMs);
     }
 
-    startDateInput.addEventListener('change', calculateMissingField);
-    endDateInput.addEventListener('change', calculateMissingField);
-    durationInput.addEventListener('input', () => scheduleCalculation());
-    durationInput.addEventListener('change', calculateMissingField);
-    durationInput.addEventListener('blur', calculateMissingField);
+    startDateInput.addEventListener('change', () => calculateMissingField('startDate'));
+    endDateInput.addEventListener('change', () => calculateMissingField('endDate'));
+    durationInput.addEventListener('input', () => scheduleCalculation('duration'));
+    durationInput.addEventListener('change', () => calculateMissingField('duration'));
+    durationInput.addEventListener('blur', () => calculateMissingField('duration'));
 
     clearBtn.addEventListener('click', () => {
       startDateInput.value = '';
@@ -349,6 +365,7 @@
         clearTimeout(calculateTimer);
         calculateTimer = null;
       }
+      lastCalculatedFieldId = null;
       clearFieldColors();
       result.innerHTML = 'Fill any two fields and the third field will be calculated automatically.';
     });
