@@ -304,6 +304,19 @@
       const startRaw = startDateInput.value;
       const durationRaw = durationInput.value;
       const endRaw = endDateInput.value;
+      const valueById = {
+        startDate: startRaw,
+        duration: durationRaw,
+        endDate: endRaw
+      };
+
+      if (editedFieldId && !valueById[editedFieldId]) {
+        const existing = editHistory.indexOf(editedFieldId);
+        if (existing >= 0) editHistory.splice(existing, 1);
+        result.innerHTML = 'Fill any two fields and the third field will be calculated automatically.';
+        clearFieldColors();
+        return;
+      }
 
       const hasStart = !!startRaw;
       const hasDuration = !!durationRaw;
