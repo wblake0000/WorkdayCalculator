@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tuesday–Saturday Workday Calculator</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --border: #d1d5db;
+      --input-bg: #ffffff;
+    }
+
+    body.dark {
+      --bg: #111827;
+      --panel: #1f2937;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --border: #374151;
+      --input-bg: #111827;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 520px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 { margin-top: 0; font-size: 1.35rem; }
+    p { color: var(--muted); margin-top: 0; }
+
+    .row {
+      display: grid;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    label { font-weight: 600; }
+
+    input, select, button {
+      width: 100%;
+      padding: 0.6rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      font: inherit;
+    }
+
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover { filter: brightness(1.05); }
+
+    .result {
+      margin-top: 1rem;
+      padding: 0.8rem;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      line-height: 1.5;
+    }
+
+    .small { font-size: 0.9rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Tuesday–Saturday Workday Calculator</h1>
+    <p>Workweek is <strong>Tuesday through Saturday</strong>. Dates are rounded to the nearest Tuesday.</p>
+
+    <div class="row">
+      <label for="startDate">Start date</label>
+      <input id="startDate" type="date" />
+    </div>
+
+    <div class="row">
+      <label for="endDate">End date</label>
+      <input id="endDate" type="date" />
+    </div>
+
+    <div class="row">
+      <label for="theme">Theme</label>
+      <select id="theme">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </div>
+
+    <button id="calculateBtn" type="button">Calculate Workdays</button>
+
+    <div id="result" class="result" aria-live="polite">
+      Pick two dates and click <strong>Calculate Workdays</strong>.
+    </div>
+  </main>
+
+  <script>
+    const startDateInput = document.getElementById('startDate');
+    const endDateInput = document.getElementById('endDate');
+    const calculateBtn = document.getElementById('calculateBtn');
+    const result = document.getElementById('result');
+    const themeSelect = document.getElementById('theme');
+
+    themeSelect.addEventListener('change', () => {
+      document.body.classList.toggle('dark', themeSelect.value === 'dark');
+    });
+
+    function parseDateInput(value) {
+      const [year, month, day] = value.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function formatDate(date) {
+      return date.toLocaleDateString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric', weekday: 'short'
+      });
+    }
+
+    function addDays(date, days) {
+      const copy = new Date(date);
+      copy.setDate(copy.getDate() + days);
+      return copy;
+    }
+
+    function roundToNearestTuesday(date) {
+      const day = date.getDay(); // Sun 0 ... Sat 6
+      const tuesday = 2;
+      const diffToPrevTuesday = (day - tuesday + 7) % 7;
+      const prevTuesday = addDays(date, -diffToPrevTuesday);
+      const nextTuesday = addDays(prevTuesday, 7);
+
+      const msToPrev = Math.abs(date - prevTuesday);
+      const msToNext = Math.abs(nextTuesday - date);
+
+      return msToPrev <= msToNext ? prevTuesday : nextTuesday;
+    }
+
+    function isWorkday(date) {
+      const d = date.getDay();
+      return d >= 2 && d <= 6; // Tue-Sat
+    }
+
+    function countWorkdaysInclusive(start, end) {
+      let count = 0;
+      const cursor = new Date(start);
+
+      while (cursor <= end) {
+        if (isWorkday(cursor)) count++;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      return count;
+    }
+
+    calculateBtn.addEventListener('click', () => {
+      const startRaw = startDateInput.value;
+      const endRaw = endDateInput.value;
+
+      if (!startRaw || !endRaw) {
+        result.innerHTML = 'Please select both dates.';
+        return;
+      }
+
+      const startOriginal = parseDateInput(startRaw);
+      const endOriginal = parseDateInput(endRaw);
+
+      const roundedStart = roundToNearestTuesday(startOriginal);
+      const roundedEnd = roundToNearestTuesday(endOriginal);
+
+      const start = roundedStart <= roundedEnd ? roundedStart : roundedEnd;
+      const end = roundedStart <= roundedEnd ? roundedEnd : roundedStart;
+
+      const workdays = countWorkdaysInclusive(start, end);
+
+      result.innerHTML = `
+        <strong>Workdays (Tue-Sat): ${workdays}</strong><br>
+        <span class="small">Rounded start: ${formatDate(roundedStart)}</span><br>
+        <span class="small">Rounded end: ${formatDate(roundedEnd)}</span><br>
+        <span class="small">Counting range used: ${formatDate(start)} → ${formatDate(end)} (inclusive)</span>
+      `;
+    });
+
+    // reasonable default theme based on system
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (prefersDark) {
+      themeSelect.value = 'dark';
+      document.body.classList.add('dark');
+    }
+  </script>
+</body>
+</html>
