@@ -274,6 +274,11 @@
       return cursor;
     }
 
+    function summaryHtml(startDate, endDate, duration, calculatedFieldLabel) {
+      return `<strong>${duration} working days</strong>: ${formatDate(startDate)} to ${formatDate(endDate)}.<br>
+        <span class="small">Calculated field: ${calculatedFieldLabel}</span>`;
+    }
+
     function clearFieldColors() {
       [startDateInput, durationInput, endDateInput].forEach((el) => {
         el.classList.remove('field-input', 'field-calculated');
@@ -340,8 +345,7 @@
         durationInput.value = String(workdays);
         isProgrammaticUpdate = false;
         markFields([startDateInput, endDateInput], durationInput);
-        result.innerHTML = `<strong>Duration calculated: ${workdays} workdays</strong><br>
-          <span class="small">Rounded range used: ${formatDate(start)} → ${formatDate(end)} (inclusive)</span>`;
+        result.innerHTML = summaryHtml(start, end, workdays, 'Duration');
         return;
       }
 
@@ -359,9 +363,7 @@
         endDateInput.value = toInputDateValue(calculatedEnd);
         isProgrammaticUpdate = false;
         markFields([startDateInput, durationInput], endDateInput);
-        result.innerHTML = `<strong>End Date calculated.</strong><br>
-          <span class="small">Rounded start used: ${formatDate(roundedStart)}</span><br>
-          <span class="small">Calculated end: ${formatDate(calculatedEnd)}</span>`;
+        result.innerHTML = summaryHtml(roundedStart, calculatedEnd, duration, 'End Date');
         return;
       }
 
@@ -384,9 +386,7 @@
         startDateInput.value = toInputDateValue(cursor);
         isProgrammaticUpdate = false;
         markFields([endDateInput, durationInput], startDateInput);
-        result.innerHTML = `<strong>Start Date calculated.</strong><br>
-          <span class="small">Rounded end used: ${formatDate(roundedEnd)}</span><br>
-          <span class="small">Calculated start: ${formatDate(cursor)}</span>`;
+        result.innerHTML = summaryHtml(cursor, roundedEnd, duration, 'Start Date');
       }
     }
 
