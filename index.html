@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tuesday–Saturday Workday Calculator</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --border: #d1d5db;
+      --input-bg: #ffffff;
+    }
+
+    body.dark {
+      --bg: #111827;
+      --panel: #1f2937;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --border: #374151;
+      --input-bg: #111827;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .card {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 { margin-top: 0; font-size: 1.35rem; }
+    p { color: var(--muted); margin-top: 0; }
+
+    .row {
+      display: grid;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    label { font-weight: 600; }
+    .date-input-wrap { position: relative; }
+    .date-input-wrap input[type="date"] { padding-left: 2.2rem; }
+    .date-open-left {
+      position: absolute;
+      left: 0.35rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1.5rem;
+      height: 1.5rem;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      font-size: 0.95rem;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 0.6rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      color: var(--text);
+      font: inherit;
+    }
+
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    button:hover { filter: brightness(1.05); }
+
+    .theme-icon-btn {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      width: 2.1rem;
+      height: 2.1rem;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--input-bg);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    body.dark input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1) brightness(1.4);
+      opacity: 0.95;
+    }
+
+    .result {
+      margin-top: 1rem;
+      padding: 0.8rem;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      line-height: 1.5;
+    }
+
+    .small { font-size: 0.9rem; color: var(--muted); }
+    .field-input {
+      border: 2px solid #22c55e;
+      background: color-mix(in srgb, #22c55e 10%, var(--input-bg));
+    }
+    .field-calculated {
+      border: 2px solid #f59e0b;
+      background: color-mix(in srgb, #f59e0b 12%, var(--input-bg));
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <button id="themeToggle" class="theme-icon-btn" type="button" aria-label="Switch to dark theme" aria-pressed="false">🌙</button>
+    <h1>Tuesday–Saturday Workday Calculator</h1>
+    <p>Workweek is <strong>Tuesday through Saturday</strong>. Start dates round to the nearest Tuesday and end dates round to the nearest Saturday.</p>
+
+    <div class="row">
+      <label for="startDate">Start date</label>
+      <div class="date-input-wrap">
+        <button type="button" class="date-open-left" data-target="startDate" aria-label="Open start date picker">📅</button>
+        <input id="startDate" type="date" />
+      </div>
+    </div>
+
+    <div class="row">
+      <label for="duration">Duration (workdays)</label>
+      <input id="duration" type="number" min="1" step="1" placeholder="e.g. 10" />
+    </div>
+
+    <div class="row">
+      <label for="endDate">End date</label>
+      <div class="date-input-wrap">
+        <button type="button" class="date-open-left" data-target="endDate" aria-label="Open end date picker">📅</button>
+        <input id="endDate" type="date" />
+      </div>
+    </div>
+
+    <button id="clearBtn" type="button">Clear</button>
+
+    <div id="result" class="result" aria-live="polite">
+      Fill any two fields and the third field will be calculated automatically.
+    </div>
+  </main>
+
+  <script>
+    const startDateInput = document.getElementById('startDate');
+    const durationInput = document.getElementById('duration');
+    const endDateInput = document.getElementById('endDate');
+    const clearBtn = document.getElementById('clearBtn');
+    const result = document.getElementById('result');
+    const themeToggle = document.getElementById('themeToggle');
+    let calculateTimer = null;
+    let isProgrammaticUpdate = false;
+    const editHistory = [];
+
+    function setTheme(isDark) {
+      document.body.classList.toggle('dark', isDark);
+      themeToggle.setAttribute('aria-pressed', String(isDark));
+      themeToggle.textContent = isDark ? '☀️' : '🌙';
+      themeToggle.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+      themeToggle.title = isDark ? 'Switch to light theme' : 'Switch to dark theme';
+    }
+
+    themeToggle.addEventListener('click', () => {
+      const isDark = document.body.classList.contains('dark');
+      setTheme(!isDark);
+    });
+
+    function parseDateInput(value) {
+      const [year, month, day] = value.split('-').map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function isCompleteDateString(value) {
+      return /^\d{4}-\d{2}-\d{2}$/.test(value);
+    }
+
+    function formatDate(date) {
+      return date.toLocaleDateString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric', weekday: 'short'
+      });
+    }
+
+    function addDays(date, days) {
+      const copy = new Date(date);
+      copy.setDate(copy.getDate() + days);
+      return copy;
+    }
+
+    function toInputDateValue(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    function roundToNearestTuesday(date) {
+      const day = date.getDay(); // Sun 0 ... Sat 6
+      const tuesday = 2;
+      const diffToPrevTuesday = (day - tuesday + 7) % 7;
+      const prevTuesday = addDays(date, -diffToPrevTuesday);
+      const nextTuesday = addDays(prevTuesday, 7);
+
+      const msToPrev = Math.abs(date - prevTuesday);
+      const msToNext = Math.abs(nextTuesday - date);
+
+      return msToPrev <= msToNext ? prevTuesday : nextTuesday;
+    }
+
+    function roundToNearestSaturday(date) {
+      const day = date.getDay(); // Sun 0 ... Sat 6
+      const saturday = 6;
+      const diffToPrevSaturday = (day - saturday + 7) % 7;
+      const prevSaturday = addDays(date, -diffToPrevSaturday);
+      const nextSaturday = addDays(prevSaturday, 7);
+
+      const msToPrev = Math.abs(date - prevSaturday);
+      const msToNext = Math.abs(nextSaturday - date);
+
+      return msToPrev <= msToNext ? prevSaturday : nextSaturday;
+    }
+
+    function isWorkday(date) {
+      const d = date.getDay();
+      return d >= 2 && d <= 6; // Tue-Sat
+    }
+
+    function countWorkdaysInclusive(start, end) {
+      let count = 0;
+      const cursor = new Date(start);
+
+      while (cursor <= end) {
+        if (isWorkday(cursor)) count++;
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      return count;
+    }
+
+    function addWorkdaysFromStart(start, durationInclusive) {
+      let remaining = durationInclusive - 1;
+      const cursor = new Date(start);
+      while (remaining > 0) {
+        cursor.setDate(cursor.getDate() + 1);
+        if (isWorkday(cursor)) remaining--;
+      }
+      return cursor;
+    }
+
+    function summaryHtml(startDate, endDate, duration, calculatedFieldLabel) {
+      return `<strong>${duration} working days</strong>: ${formatDate(startDate)} to ${formatDate(endDate)}.<br>
+        <span class="small">Calculated field: ${calculatedFieldLabel}</span>`;
+    }
+
+    function clearFieldColors() {
+      [startDateInput, durationInput, endDateInput].forEach((el) => {
+        el.classList.remove('field-input', 'field-calculated');
+      });
+    }
+
+    function markFields(inputFields, calculatedField) {
+      clearFieldColors();
+      inputFields.forEach((el) => el.classList.add('field-input'));
+      calculatedField.classList.add('field-calculated');
+    }
+
+    function recordUserEdit(fieldId) {
+      if (isProgrammaticUpdate) return;
+      const existing = editHistory.indexOf(fieldId);
+      if (existing >= 0) editHistory.splice(existing, 1);
+      editHistory.push(fieldId);
+      if (editHistory.length > 2) editHistory.shift();
+    }
+
+    function calculateMissingField(editedFieldId = null) {
+      if (editedFieldId) recordUserEdit(editedFieldId);
+      const startRaw = startDateInput.value;
+      const durationRaw = durationInput.value;
+      const endRaw = endDateInput.value;
+      const valueById = {
+        startDate: startRaw,
+        duration: durationRaw,
+        endDate: endRaw
+      };
+
+      if (editedFieldId && !valueById[editedFieldId]) {
+        const existing = editHistory.indexOf(editedFieldId);
+        if (existing >= 0) editHistory.splice(existing, 1);
+        result.innerHTML = 'Fill any two fields and the third field will be calculated automatically.';
+        clearFieldColors();
+        return;
+      }
+
+      if ((startRaw && !isCompleteDateString(startRaw)) || (endRaw && !isCompleteDateString(endRaw))) {
+        return;
+      }
+
+      const hasStart = !!startRaw;
+      const hasDuration = !!durationRaw;
+      const hasEnd = !!endRaw;
+      const filledCount = [hasStart, hasDuration, hasEnd].filter(Boolean).length;
+
+      if (filledCount < 2) {
+        result.innerHTML = 'Fill any two fields and the third field will be calculated automatically.';
+        clearFieldColors();
+        return;
+      }
+
+      const lastTwo = editHistory.length === 2 ? [...editHistory] : null;
+      const hasValueById = {
+        startDate: hasStart,
+        duration: hasDuration,
+        endDate: hasEnd
+      };
+      let targetFieldId = null;
+      if (lastTwo && hasValueById[lastTwo[0]] && hasValueById[lastTwo[1]]) {
+        targetFieldId = ['startDate', 'duration', 'endDate'].find((id) => !lastTwo.includes(id));
+      } else if (filledCount === 2) {
+        targetFieldId = !hasStart ? 'startDate' : !hasDuration ? 'duration' : 'endDate';
+      } else {
+        return;
+      }
+
+      if (targetFieldId === 'duration') {
+        const roundedStart = roundToNearestTuesday(parseDateInput(startRaw));
+        const roundedEnd = roundToNearestSaturday(parseDateInput(endRaw));
+        isProgrammaticUpdate = true;
+        startDateInput.value = toInputDateValue(roundedStart);
+        endDateInput.value = toInputDateValue(roundedEnd);
+        isProgrammaticUpdate = false;
+        const start = roundedStart <= roundedEnd ? roundedStart : roundedEnd;
+        const end = roundedStart <= roundedEnd ? roundedEnd : roundedStart;
+        const workdays = countWorkdaysInclusive(start, end);
+        isProgrammaticUpdate = true;
+        durationInput.value = String(workdays);
+        isProgrammaticUpdate = false;
+        markFields([startDateInput, endDateInput], durationInput);
+        result.innerHTML = summaryHtml(start, end, workdays, 'Duration');
+        return;
+      }
+
+      if (targetFieldId === 'endDate') {
+        const duration = Number(durationRaw);
+        if (!Number.isInteger(duration) || duration < 1) {
+          result.innerHTML = 'Duration must be a whole number greater than 0.';
+          clearFieldColors();
+          return;
+        }
+        const roundedStart = roundToNearestTuesday(parseDateInput(startRaw));
+        isProgrammaticUpdate = true;
+        startDateInput.value = toInputDateValue(roundedStart);
+        const calculatedEnd = addWorkdaysFromStart(roundedStart, duration);
+        endDateInput.value = toInputDateValue(calculatedEnd);
+        isProgrammaticUpdate = false;
+        markFields([startDateInput, durationInput], endDateInput);
+        result.innerHTML = summaryHtml(roundedStart, calculatedEnd, duration, 'End Date');
+        return;
+      }
+
+      if (targetFieldId === 'startDate') {
+        const duration = Number(durationRaw);
+        if (!Number.isInteger(duration) || duration < 1) {
+          result.innerHTML = 'Duration must be a whole number greater than 0.';
+          clearFieldColors();
+          return;
+        }
+        const roundedEnd = roundToNearestSaturday(parseDateInput(endRaw));
+        isProgrammaticUpdate = true;
+        endDateInput.value = toInputDateValue(roundedEnd);
+        let cursor = new Date(roundedEnd);
+        let remaining = duration - 1;
+        while (remaining > 0) {
+          cursor.setDate(cursor.getDate() - 1);
+          if (isWorkday(cursor)) remaining--;
+        }
+        startDateInput.value = toInputDateValue(cursor);
+        isProgrammaticUpdate = false;
+        markFields([endDateInput, durationInput], startDateInput);
+        result.innerHTML = summaryHtml(cursor, roundedEnd, duration, 'Start Date');
+      }
+    }
+
+    function scheduleCalculation(editedFieldId, delayMs = 550) {
+      if (calculateTimer) clearTimeout(calculateTimer);
+      calculateTimer = setTimeout(() => {
+        calculateMissingField(editedFieldId);
+        calculateTimer = null;
+      }, delayMs);
+    }
+
+    startDateInput.addEventListener('input', () => recordUserEdit('startDate'));
+    endDateInput.addEventListener('input', () => recordUserEdit('endDate'));
+    startDateInput.addEventListener('change', () => scheduleCalculation('startDate', 250));
+    endDateInput.addEventListener('change', () => scheduleCalculation('endDate', 250));
+    durationInput.addEventListener('input', () => scheduleCalculation('duration'));
+    durationInput.addEventListener('change', () => calculateMissingField('duration'));
+    durationInput.addEventListener('blur', () => calculateMissingField('duration'));
+
+    clearBtn.addEventListener('click', () => {
+      startDateInput.value = '';
+      durationInput.value = '';
+      endDateInput.value = '';
+      if (calculateTimer) {
+        clearTimeout(calculateTimer);
+        calculateTimer = null;
+      }
+      editHistory.length = 0;
+      clearFieldColors();
+      result.innerHTML = 'Fill any two fields and the third field will be calculated automatically.';
+    });
+
+    document.querySelectorAll('.date-open-left').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.dataset.target);
+        if (target && typeof target.showPicker === 'function') target.showPicker();
+        else if (target) target.focus();
+      });
+    });
+
+    // default theme is always light
+    setTheme(false);
+  </script>
+</body>
+</html>
