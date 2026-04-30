@@ -336,6 +336,12 @@
         return;
       }
 
+      if ((editedFieldId === 'startDate' || editedFieldId === 'endDate')
+          && document.activeElement
+          && document.activeElement.id === editedFieldId) {
+        return;
+      }
+
       if ((startRaw && !isUsableDateString(startRaw)) || (endRaw && !isUsableDateString(endRaw))) {
         return;
       }
@@ -435,8 +441,10 @@
 
     startDateInput.addEventListener('input', () => recordUserEdit('startDate'));
     endDateInput.addEventListener('input', () => recordUserEdit('endDate'));
-    startDateInput.addEventListener('change', () => scheduleCalculation('startDate', 250));
-    endDateInput.addEventListener('change', () => scheduleCalculation('endDate', 250));
+    startDateInput.addEventListener('change', () => recordUserEdit('startDate'));
+    endDateInput.addEventListener('change', () => recordUserEdit('endDate'));
+    startDateInput.addEventListener('blur', () => scheduleCalculation('startDate', 0));
+    endDateInput.addEventListener('blur', () => scheduleCalculation('endDate', 0));
     durationInput.addEventListener('input', () => scheduleCalculation('duration'));
     durationInput.addEventListener('change', () => calculateMissingField('duration'));
     durationInput.addEventListener('blur', () => calculateMissingField('duration'));
